@@ -1,2 +1,2 @@
-from qformer.main import ImgBlock
+from qformer.main import CrossAttention, ImgBlock
 
