@@ -2,7 +2,7 @@
 
 
 # Qformer
-
+Implementation of Qformer from BLIP2 in Zeta Lego blocks.
 
 ## Usage
 
