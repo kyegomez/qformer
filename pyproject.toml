@@ -26,6 +26,7 @@ python = "^3.6"
 swarms = "*"
 zetascale = "*"
 torch = "*"
+einops = "*"
 
 
 [tool.poetry.group.lint.dependencies]
