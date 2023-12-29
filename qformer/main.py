@@ -170,11 +170,3 @@ class ImgBlock(nn.Module):
             feedforwarded = self.feedforward(crossed)
         return feedforwarded
 
-
-# 3d tensor, B x SEQLEN x DIM
-x = torch.randn(1, 32, 1024)
-image = torch.randn(1, 32, 1024)
-
-attn = ImgBlock(1024, 8, 1024)
-out = attn(x, image)
-print(out.shape)
