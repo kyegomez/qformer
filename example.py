@@ -1,11 +1,9 @@
 import torch
-from qformer import ImgBlock
+from qformer import QFormer
 
+x = torch.randn(1, 32, 512)
+img = torch.randn(1, 32, 512)
 
-# 3d tensor, B x SEQLEN x DIM
-x = torch.randn(1, 32, 1024)
-image = torch.randn(1, 32, 1024)
-
-attn = ImgBlock(1024, 8, 1024)
-out = attn(x, image)
-print(out.shape)
+qformer = QFormer(512, 8, 8, 0.1, 2, 2)
+y = qformer(x, img)
+print(y.shape)

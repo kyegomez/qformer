@@ -24,6 +24,30 @@ print(out.shape)
 ```
 
 
+### `TextBlock`
+
+```python
+import torch
+from qformer import TextBlock
+
+x = torch.randn(1, 32, 512)
+
+model = TextBlock(512, 8, 8)
+y = model(x)
+print(y.shape)
+
+```
+
+
+
+### Qformer
+```python
+
+
+
+```
+
+
 # License
 MIT
 
