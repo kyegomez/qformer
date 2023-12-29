@@ -1,46 +1,43 @@
 import torch
-from torch import nn
 
-def bi_directional_self_attn_mask(img_tokens, text_tokens):
+
+def multi_modal_causal_self_attention_mask(x):
     """
-    Creates a bi-directional self-attention mask for image-text matching tasks.
-    All image and text tokens can attend to each other.
+    Applies a multi-modal causal self-attention mask. This mask allows query tokens to attend to all
+    other query tokens and text tokens to attend only to preceding text tokens and all query tokens.
 
     Args:
-        img_tokens (torch.Tensor): The tensor representing image tokens with shape [B, C, H, W].
-        text_tokens (torch.Tensor): The tensor representing text tokens with shape [B, SEQLEN, Dim].
+    - x (torch.Tensor): the input tensor of shape [batch_size, seqlen, dim]
 
     Returns:
-        torch.Tensor: A mask tensor where all elements are zero (allowing full attention).
+    - torch.Tensor: the mask tensor of shape [batch_size, seqlen, seqlen] with 0s where attention is allowed
+                    and float('-inf') where it is not, suitable for adding to the raw attention scores.
     """
-    batch_size, seq_len, _ = text_tokens.size()
-    num_image_tokens = img_tokens.size(2) * img_tokens.size(3)
-    total_seq_len = seq_len + num_image_tokens
-    mask = torch.zeros((batch_size, total_seq_len, total_seq_len), dtype=text_tokens.dtype, device=text_tokens.device)
+    batch_size, seqlen, _ = x.shape
+    # Initialize mask to all ones
+    mask = torch.ones((seqlen, seqlen), dtype=torch.float32)
+    # Create a causal mask for the text tokens
+    causal_mask = torch.tril(
+        torch.ones((seqlen // 2, seqlen // 2), dtype=torch.float32)
+    )
+    mask[-(seqlen // 2) :, -(seqlen // 2) :] = causal_mask
+    # Invert the mask so that 0s are where attention is allowed and float('-inf') where it is not
+    mask = torch.log(mask)
+
+    # Expand the mask for the batch size
+    mask = mask.repeat(batch_size, 1, 1)
+
     return mask
 
 
-def mmc_self_attn_mask(img, text, *args):
-    total_tokens = img + text
-    mask = torch.full(
-        (total_tokens, total_tokens, *args), float("-inf")
-    )
-    mask[:img, :img] = 0
-    mask[:img:, :img] = 0
-    mask[:img:, img:] = torch.tril(
-        torch.zeros((text, text, *args))
-    )
-    return mask
+batch_size = 2
+seqlen = 8
+dim = 512
 
 
-def uni_modal_self_attn_mask(img, text):
-    total = img + text
-    mask = torch.full(total, total), float("-inf")
-    mask[:img, :img] = 0
-    mask[img:, img:] = 0
-    return 
-
-x = torch.randn(1, 3, 224, 224)
-y = torch.randn(1, 10, 768)
-
-print(bi_directional_self_attn_mask(x, y).shape)
+# Example to test the function with dummy data
+x_dummy = torch.rand(batch_size, seqlen, dim)  # Dummy data
+multi_modal_causal_mask = multi_modal_causal_self_attention_mask(
+    x_dummy
+)
+print(multi_modal_causal_mask.shape)
