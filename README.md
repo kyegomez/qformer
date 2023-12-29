@@ -4,8 +4,11 @@
 # Qformer
 Implementation of Qformer from BLIP2 in Zeta Lego blocks.
 
-## Usage
+## Install
+`pip3 install qformer`
 
+
+## Usage
 ```python
 import torch
 from qformer import ImgBlock
