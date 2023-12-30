@@ -2,7 +2,7 @@
 
 
 # Qformer
-Implementation of Qformer from BLIP2 in Zeta Lego blocks.
+Implementation of Qformer from BLIP2 in Zeta Lego blocks. The implementation is here straight from Figure 2. In particular the image block and text block.
 
 ## Install
 `pip3 install qformer`
@@ -11,40 +11,14 @@ Implementation of Qformer from BLIP2 in Zeta Lego blocks.
 ## Usage
 ```python
 import torch
-from qformer import ImgBlock
-
-
-# 3d tensor, B x SEQLEN x DIM
-x = torch.randn(1, 32, 1024)
-image = torch.randn(1, 32, 1024)
-
-attn = ImgBlock(1024, 8, 1024)
-out = attn(x, image)
-print(out.shape)
-```
-
-
-### `TextBlock`
-
-```python
-import torch
-from qformer import TextBlock
+from qformer import QFormer
 
 x = torch.randn(1, 32, 512)
+img = torch.randn(1, 32, 512)
 
-model = TextBlock(512, 8, 8)
-y = model(x)
+qformer = QFormer(512, 8, 8, 0.1, 2, 2)
+y = qformer(x, img)
 print(y.shape)
-
-```
-
-
-
-### Qformer
-```python
-
-
-
 ```
 
 

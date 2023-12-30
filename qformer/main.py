@@ -1,101 +1,11 @@
-import math
 
-import torch
-import torch.nn.functional as F
-from einops import rearrange, repeat
-from torch import Tensor, einsum, nn
-from zeta import LayerNorm, default, exists, l2norm
+from torch import Tensor, nn
 from zeta.nn import (
     MultiQueryAttention,
     SimpleFeedForward,
 )
+from zeta.nn.attention.cross_attention import CrossAttention
 from zeta.utils import enforce_types
-
-
-class CrossAttention(nn.Module):
-    def __init__(
-        self,
-        dim,
-        *,
-        context_dim=None,
-        dim_head=64,
-        heads=8,
-        dropout=0.0,
-        norm_context=False,
-        cosine_sim=False,
-        cosine_sim_scale=16,
-    ):
-        super().__init__()
-        self.cosine_sim = cosine_sim
-        self.scale = (
-            cosine_sim_scale if cosine_sim else (dim_head**-0.5)
-        )
-        self.heads = heads
-        inner_dim = dim_head * heads
-
-        context_dim = default(context_dim, dim)
-
-        self.norm = LayerNorm(dim)
-        self.norm_context = (
-            LayerNorm(context_dim) if norm_context else nn.Identity()
-        )
-        self.dropout = nn.Dropout(dropout)
-
-        self.null_kv = nn.Parameter(torch.randn(2, dim_head))
-        self.to_q = nn.Linear(dim, inner_dim, bias=False)
-        self.to_kv = nn.Linear(context_dim, inner_dim * 2, bias=False)
-
-        self.to_out = nn.Sequential(
-            nn.Linear(inner_dim, dim, bias=False), LayerNorm(dim)
-        )
-
-    def forward(self, x, context, mask=None):
-        b, n, device = *x.shape[:2], x.device
-
-        x = self.norm(x)
-        context = self.norm_context(context)
-
-        q, k, v = (
-            self.to_q(x),
-            *self.to_kv(context).chunk(2, dim=-1),
-        )
-
-        q, k, v = map(
-            lambda t: rearrange(
-                t, "b n (h d) -> b h n d", h=self.heads
-            ),
-            (q, k, v),
-        )
-
-        # add null key / value for classifier free guidance in prior net
-
-        nk, nv = map(
-            lambda t: repeat(t, "d -> b h 1 d", h=self.heads, b=b),
-            self.null_kv.unbind(dim=-2),
-        )
-
-        k = torch.cat((nk, k), dim=-2)
-        v = torch.cat((nv, v), dim=-2)
-
-        if self.cosine_sim:
-            q, k = map(l2norm, (q, k))
-
-        q, k = map(lambda t: t * math.sqrt(self.scale), (q, k))
-
-        sim = einsum("b h i d, b h j d -> b h i j", q, k)
-        max_neg_value = -torch.finfo(sim.dtype).max
-
-        if exists(mask):
-            mask = F.pad(mask, (1, 0), value=True)
-            mask = rearrange(mask, "b j -> b 1 1 j")
-            sim = sim.masked_fill(~mask, max_neg_value)
-
-        attn = sim.softmax(dim=-1, dtype=torch.float32)
-        attn = attn.type(sim.dtype)
-
-        out = einsum("b h i j, b h j d -> b h i d", attn, v)
-        out = rearrange(out, "b h n d -> b n (h d)")
-        return self.to_out(out)
 
 
 class ImgBlock(nn.Module):
@@ -264,6 +174,29 @@ class TextBlock(nn.Module):
 
 
 class QFormer(nn.Module):
+    """
+    QFormer is a transformer-based model for processing text and image inputs.
+
+    Args:
+        dim (int): The dimension of the model.
+        heads (int): The number of attention heads.
+        depth (int): The depth of the model.
+        dropout (float, optional): The dropout rate. Defaults to 0.1.
+        text_block_depth (int, optional): The depth of the text block. Defaults to None.
+        img_text_block_depth (int, optional): The depth of the image text block. Defaults to None.
+
+    Attributes:
+        dim (int): The dimension of the model.
+        heads (int): The number of attention heads.
+        depth (int): The depth of the model.
+        dropout (float): The dropout rate.
+        img_block (ImgBlock): The image block of the model.
+        text_block (TextBlock): The text block of the model.
+        img_layers (nn.ModuleList): The list of image layers.
+        text_layers (nn.ModuleList): The list of text layers.
+
+    """
+
     def __init__(
         self,
         dim: int,
@@ -295,6 +228,17 @@ class QFormer(nn.Module):
             )
 
     def forward(self, x: Tensor, img: Tensor) -> Tensor:
+        """
+        Forward pass of the QFormer model.
+
+        Args:
+            x (Tensor): The input tensor.
+            img (Tensor): The image tensor.
+
+        Returns:
+            Tensor: The output tensor.
+
+        """
         for text_block, img_block in zip(
             self.text_layers, self.img_layers
         ):
