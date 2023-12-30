@@ -40,3 +40,14 @@ MIT
 
 
 
+# Citation
+```bibtext
+@misc{li2023blip2,
+    title={BLIP-2: Bootstrapping Language-Image Pre-training with Frozen Image Encoders and Large Language Models}, 
+    author={Junnan Li and Dongxu Li and Silvio Savarese and Steven Hoi},
+    year={2023},
+    eprint={2301.12597},
+    archivePrefix={arXiv},
+    primaryClass={cs.CV}
+}
+```
