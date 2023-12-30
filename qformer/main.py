@@ -2,10 +2,9 @@ from torch import Tensor, nn
 from zeta.nn import (
     MultiQueryAttention,
     SimpleFeedForward,
-    SkipConnection,
 )
 from zeta.nn.attention.cross_attention import CrossAttention
-from zeta.utils import enforce_types
+from qformer.masking import mask_top_right_quadrant
 
 
 class ImgBlock(nn.Module):
@@ -35,7 +34,6 @@ class ImgBlock(nn.Module):
 
     """
 
-    @enforce_types
     def __init__(
         self,
         dim: int,
@@ -58,6 +56,7 @@ class ImgBlock(nn.Module):
         )
         self.feedforward = SimpleFeedForward(dim, dim * 4, dropout)
 
+        # Create a list of layers
         self.self_attn_layers = nn.ModuleList([])
         self.cross_attn_layers = nn.ModuleList([])
         self.ffn_layers = nn.ModuleList([])
@@ -68,18 +67,15 @@ class ImgBlock(nn.Module):
             self.self_attn_layers.append(
                 MultiQueryAttention(dim, heads)
             )
-
             # Add the cross attention layer
             self.cross_attn_layers.append(
                 CrossAttention(dim=dim, heads=heads, dropout=dropout)
             )
-
             # Add the simple feedforward layer
             self.ffn_layers.append(
                 SimpleFeedForward(dim, dim * 4, dropout)
             )
 
-    @enforce_types
     def forward(self, x: Tensor, img: Tensor) -> Tensor:
         """
         Performs the forward pass of the ImgBlock module.
@@ -243,6 +239,7 @@ class QFormer(nn.Module):
             self.text_layers, self.img_layers
         ):
             x = text_block(x)
+            x = mask_top_right_quadrant(x)
             out = img_block(x, img)
             out = out + x
         return out
