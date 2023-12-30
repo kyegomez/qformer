@@ -1,8 +1,8 @@
-
 from torch import Tensor, nn
 from zeta.nn import (
     MultiQueryAttention,
     SimpleFeedForward,
+    SkipConnection,
 )
 from zeta.nn.attention.cross_attention import CrossAttention
 from zeta.utils import enforce_types
@@ -246,5 +246,3 @@ class QFormer(nn.Module):
             out = img_block(x, img)
             out = out + x
         return out
-
-
