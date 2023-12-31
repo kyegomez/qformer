@@ -33,7 +33,6 @@ class QFormer(nn.Module):
         >>> out = model(x, img)
         >>> out.shape
         torch.Size([1, 10, 512])
-
     """
 
     def __init__(
