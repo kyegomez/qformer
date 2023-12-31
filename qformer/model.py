@@ -80,8 +80,7 @@ class QFormer(nn.Module):
         for text_block, img_block in zip(
             self.text_layers, self.img_layers
         ):
-            x = text_block(x)
+            x = text_block(x) + x
             x = mask_top_right_quadrant(x)
-            out = img_block(x, img)
-            out = out + x
+            out = img_block(x, img) + x
         return out
