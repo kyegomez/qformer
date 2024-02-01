@@ -13,23 +13,26 @@ Implementation of Qformer from BLIP2 in Zeta Lego blocks. The implementation is 
 import torch
 from qformer import QFormer
 
-x = torch.randn(
-    1, 32, 512
-)  # Create a random tensor of shape (1, 32, 512)
+# Create a random tensor of shape (1, 32, 512)
+x = torch.randn(1, 32, 512)
 
-img = torch.randn(
-    1, 32, 512
-)  # Create another random tensor of shape (1, 32, 512)
+# Create a random image tensor of shape (1, 3, 224, 224)
+img = torch.randn(1, 3, 224, 224)
 
-qformer = QFormer(
-    512, 8, 8, 0.1, 2, 2
-)  # Create an instance of the QFormer model
+# Create an instance of the QFormer model with the following parameters:
+# - input_size: 512
+# - num_heads: 8
+# - num_layers: 8
+# - dropout: 0.1
+# - num_classes: 2
+# - num_patches: 2
+qformer = QFormer(512, 8, 8, 0.1, 2, 2)
 
-y = qformer(
-    x, img
-)  # Apply the QFormer model to the input tensors x and img
+# Apply the QFormer model to the input tensors x and img
+y = qformer(x, img)
 
-print(y.shape)  # Print the shape of the output tensor y
+# Print the shape of the output tensor y
+print(y.shape)
 
 
 ```
