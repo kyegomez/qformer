@@ -5,9 +5,11 @@ x = torch.randn(
     1, 32, 512
 )  # Create a random tensor of shape (1, 32, 512)
 
+
 img = torch.randn(
-    1, 32, 512
-)  # Create another random tensor of shape (1, 32, 512)
+    1, 3, 224, 224
+)
+
 
 qformer = QFormer(
     512, 8, 8, 0.1, 2, 2

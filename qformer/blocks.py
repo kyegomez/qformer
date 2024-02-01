@@ -1,9 +1,43 @@
+from einops import rearrange, reduce
 from torch import Tensor, nn
 from zeta.nn import (
     MultiQueryAttention,
     SimpleFeedForward,
 )
 from zeta.nn.attention.cross_attention import CrossAttention
+
+
+def img_to_text(x: Tensor, seqlen: int, dim: int, norm: bool = True):
+    """
+    Convert an image tensor to a text tensor.
+
+    Args:
+        x (Tensor): Input image tensor of shape (batch_size, channels, height, width).
+        seqlen (int): Length of the output text sequence.
+        dim (int): Dimension of the intermediate representation.
+        norm (bool, optional): Whether to apply layer normalization. Defaults to True.
+
+    Returns:
+        Tensor: Output text tensor of shape (batch_size, seqlen, dim).
+
+    Example::
+        >>> x = torch.randn(2, 3, 32, 32)
+        >>> x = img_to_text(x, 100, 512)
+        >>> x.shape
+        torch.Size([2, 100, 512])
+    """
+    b, c, h, w = x.shape
+
+    img = reduce(x, "b c h w -> b c (h w)", "mean")
+    img = nn.Linear(h * w, dim)(img)
+    img = rearrange(img, "b c d -> b d c")
+    img = nn.Linear(c, seqlen)(img)
+    img = rearrange(img, "b d c -> b c d")
+
+    if norm:
+        img = nn.LayerNorm(dim)(img)
+
+    return img
 
 
 class ImgBlock(nn.Module):
@@ -49,11 +83,8 @@ class ImgBlock(nn.Module):
         self.dropout = dropout
         self.attn = MultiQueryAttention(dim, heads)
         self.cross_attn = CrossAttention(
-            dim=dim,
-            heads=heads,
-            dropout=dropout,
+            dim=dim, heads=heads, dropout=dropout, *args, **kwargs
         )
-        self.feedforward = SimpleFeedForward(dim, dim * 4, dropout)
 
         # Create a list of layers
         self.self_attn_layers = nn.ModuleList([])
@@ -64,15 +95,23 @@ class ImgBlock(nn.Module):
         for _ in range(depth):
             # Add the multi query attention layer
             self.self_attn_layers.append(
-                MultiQueryAttention(dim, heads)
+                MultiQueryAttention(dim, heads, *args, **kwargs)
             )
             # Add the cross attention layer
             self.cross_attn_layers.append(
-                CrossAttention(dim=dim, heads=heads, dropout=dropout)
+                CrossAttention(
+                    dim=dim,
+                    heads=heads,
+                    dropout=dropout,
+                    *args,
+                    **kwargs,
+                )
             )
             # Add the simple feedforward layer
             self.ffn_layers.append(
-                SimpleFeedForward(dim, dim * 4, dropout)
+                SimpleFeedForward(
+                    dim, dim * 4, dropout, *args, **kwargs
+                )
             )
 
     def forward(self, x: Tensor, img: Tensor) -> Tensor:
@@ -87,6 +126,10 @@ class ImgBlock(nn.Module):
             Tensor: The output tensor after applying multi-query attention, cross-attention, and feedforward operations.
 
         """
+        b_t, s, d = x.shape
+        b, c, h, w = img.shape
+        img = img_to_text(img, s, d)
+
         for self_attn, cross_attn, ffn in zip(
             self.self_attn_layers,
             self.cross_attn_layers,
@@ -140,15 +183,18 @@ class TextBlock(nn.Module):
         self.dropout = dropout
 
         self.attn = MultiQueryAttention(dim, heads)
-        self.feedforward = SimpleFeedForward(dim, dim * 4, dropout)
         self.layers = nn.ModuleList([])
         self.ffn_layers = nn.ModuleList([])
 
         for _ in range(depth):
-            self.layers.append(MultiQueryAttention(dim, heads))
+            self.layers.append(
+                MultiQueryAttention(dim, heads, *args, **kwargs)
+            )
 
             self.ffn_layers.append(
-                SimpleFeedForward(dim, dim * 4, dropout)
+                SimpleFeedForward(
+                    dim, dim * 4, dropout, *args, **kwargs
+                )
             )
 
     def forward(self, x: Tensor) -> Tensor:
